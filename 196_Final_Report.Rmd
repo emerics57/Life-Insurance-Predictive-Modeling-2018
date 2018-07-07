@@ -1,0 +1,737 @@
+---
+output:
+  pdf_document: 
+    latex_engine: xelatex
+    number_section: yes
+---
+\begin{titlepage}
+\begin{center}
+\includegraphics[height=6cm]{ucsb-seal.png}\\
+\end{center}
+  \vspace*{2em}{\centering\Huge\
+  \textsl{Predicting Term Life Insurance Purchases}\par}
+  \vspace{1em}
+  {\hfill\itshape \textbf{PSTAT 196}\par}
+  \vspace{0em}
+  {\hfill\itshape \textbf{June 10{\textsuperscript{th}, 2018}}}
+  \vfill
+  \begin{flushright}
+    \textbf{\underline{Group Members:}}\\~\\
+    Wendy Gao\\
+    Emeric Szaboky\\
+    Jacobo Pereira-Pacheco\\~\\
+    \textbf{\underline{Advisor:}}\\~\\
+    Ian Duncan
+  \end{flushright}
+\end{titlepage}
+
+\newpage
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(digits = 4)
+knitr::opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+\tableofcontents
+\pagebreak
+
+# Term Life Insurance  
+
+The purpose of this project, pursued on behalf of The Society of Actuaries, is to develop predictive models for the prediction of purchasers of term life insurance policies, and for predicting quantities of policies purchased. The data consists of information regarding survey responders for a survey regarding inquiry about term life insurance purchase. As a part of this research, exploratory analysis was performed in order to investigate those predictors that may be associated with the purchase of term insurance, and to derive other variables that may reveal key characteristics of those who purchase term insurance. The report is extensive, including a plethora of answers to this question, including multiple drawbacks that individuals may run into. 
+
+# Data Exploration 
+
+Before building predictive models, we conducted basic exploratory analysis. The variables ETHNICITY, NETVALUE, and BORROWCVLIFEPOL were dropped from the dataset, because they were either unexplained or ambiguously defined in documentation. We began by examining the predictors given in the dataset in order to highlight any trends or areas of interests that may be associated with term insurance purchase. To do this, we first created variables EDUDIFF and AGEDIFF to see if the difference in education level and age between the term insurance purchaser and spouse could potentially reveal term insurance purchasing patterns. We then aggregated basic summary statistics (mean, median, min, max, variance) for covariates to further understand the data. This revealed whether some variables should be treated as continuous or categorical, and which variables had missing data that was not stored as NA values. The observations with missing values were altered to store NA values. 
+
+Next, we computed a correlation coefficient matrix (using the Pearson measure) to see the correlations between the variables. Due to the fact that there were 136 missing values for the variable SAGE (spouse age), the correlation coefficient for AGEDIFF and Term_Flag could not be computed until those 136 values were ignored. We proceeded to instruct R to ignore the rows with missing observations and obtained correlation values for all the variables, which reveal interesting insights. It can be seen that although the values of the correlation coefficients are small, AGEDIFF and Term_Flag have a negative correlation, suggesting that it is possible that couples with smaller age differences are more likely to purchase life insurance. 
+
+Subsequently, log-transformations were explored to examine how the scatterplot matrix would change. The logarithmic transformations merited investigation because upon observing the initial scatterplot matrix, there appeared to be some exponential trends that would benefit from a logarithmic transformation. Specifically, the variables FACE and INCOME showcased moderately strong linear trends after being transformed. Other variables (AGE and EDUCATION) were transformed to simply see what else the data may convey.  
+
+In addition to the exploration above, we plotted bar plots with AGEDIFF on the x-axis against variables INCOME, EDUCATION, and FACE. It was found that those responders with smaller age differences tended to have higher incomes, education levels, and face values of life insurance. It was also discovered that those with higher education levels tended to have higher face values of life insurance. (See figures 1-4)
+
+Next, we looked at boxplots in an effort to investigate the general relationship between the covariates and Term_Flag. It is observed that the responders who purchased insurance tended to have higher education levels, and slightly more household members. (See figures 5-8)
+
+Afterwards, we examined the distributions of each variable using histograms. (See figures 9-14) Most variables were fairly normally distributed, but some variables needed to be truncated. (See figures 15-21) We decided to truncate the variables INCOME and TOTINCOME both at 200,000. We decided to truncate the variables CHARITY, FACE, FACECVLIFEPOLICIES, and CASHCVLIFEPOLICIES at 50,000, 50,000, 100,000, and 6,500 respectively. 
+
+We created additional bar graphs to learn the demographics of those who purchase term insurance. We found that married couples, men, and educated people make the majority of those who purchase term insurance. We also found that a good number of people who purchased insurance reported 2 as the number of household members. (See figures 22-25)
+
+# Data Preparation
+
+In preparing the data for model building it was most important to correctly split the data into training and test sets. Because the data is imbalanced and fairly small, it was integral to ensure that purchasers and non-purchasers of term insurance were balanced. Therefore, when building the train and test sets respectively, the original data was split into purchasers and non-purchasers, randomly sampled, and later re-combined to create the training and test sets to be used for model building. 
+
+# Data Modeling 
+
+For predicting purchasers of term life insurance, three different logistic regression models were fit as required. Moreover, probit and complementary log log (c-log-log) models were explored as alternatives to logistic regression. We found this to be beneficial as it would be interesting to see how different link functions within the binomial family would perform. Although creating three different logistic regression models is beneficial, depending on the situation, probit regression or c-log-log regression may outperform logistic regression. 
+
+For predicting FACE, we explored ridge regression, lasso regression and quantile regression. Ridge regression shrinks the coefficients that do not influence the dependent variable as much, thus highlighting which variables are influential on the face value. Similar to ridge regression, lasso regression also shrinks the coefficients that are “unimportant,” except it shrinks the coefficients to zero, creating simpler and, sometimes, more interpretable models.  Quantile regression is explored to investigate which predictors of face are sufficient with linear regression, and which will need more robust regression techniques. 
+
+## Logistic Regression
+In the process of modeling with logistic regression, it was discovered that particular predictors had significant multi-collinearity resulting in modeling issues. In order to resolve the multicollinearity among predictors, variance inflation factor (VIF function) from the "car" package was used to identify those highly correlated predictors (variables with VIF > 5 dropped). VIF recognizes variables with perfect correlation as aliased variables ("same") and is unable to produce output with the presence of these variables. Therefore, the alias function from the "car" package was also used to identify perfectly correlated variables. In combination with one another, these two functions were used to identify the variables to be removed in order to resolve multicollinearity. Due to strong multicollinearity, all spousal variables and derived variables (AGEDIFF, EDUDIFF) were removed from regression modeling. 
+
+From this point, the logistic regression full model (Model 1) was acquired, including all predictors which were verified to be independent. It possessed an area under the ROC curve (AUC) of 0.7186257. A reduced logistic regression model (Model 2) with an AUC of 0.7075949 was obtained by the removal of FACECVLIFEPOLICIES, TOTINCOME and NUMHH. Model 2 possessed a lower Akaike Information Criterion (AIC), but a smaller AUC as well. Low AIC and high AUC respectively are generally considered desirable. However, in this situation, Model 2 is able to obtain the same class prediction accuracy even with a lower AUC. This is because the prediction accuracy is computed at the threshold value of 0.5, while AUC is computed by adding all of the accuracies computed for all possible threshold values$^1$. It can be concluded that class prediction accuracy is our most important measure of model significance since it assesses the model with respect to the chosen threshold. Lastly, another reduced model (Model 3) was obtained by inclusion of the same predictors from Model 2 with the addition of a log transformed AGE predictor, instead of AGE. Model 3 possessed the lowest AIC, and an AUC of 0.7106691, less than that of Model 1 but greater than that of Model 2. It was decided that the reduced Model 3 was the most appropriate model because it had the best class prediction accuracy of the 3 models, while having the 2nd-largest AUC. 
+
+## Probit Regression
+Although the goal was to produce a suitable logistic regression, we explored probit regression models because probit models may be better suited when non-constant variances is present in the datasets$^2$. Observing the logit fitted values versus the probit fitted values, the two estimations are very similar. Inspecting the ROC curve and AUC values for the probit model, an AUC of 0.7459313 was achieved, which proved favorable than logistics AUC value of 0.7106691. However, the goal of probit was to showcase that if a different probability threshold was chosen other than 0.5, probit may classify better than logistic. Interestingly, the KS statistic for the probit model is 44% compared to 33.6% by the logistic, indicating by KS standards that the data is technically suitable for a logistic model$^3$.
+
+## C-Log-Log Regression
+Exploring a complementary log-log (C-Log-Log) model is appropriate when the prediction of the probability of an event may be very small of very large$^4$. In relation to our term life insurance data, the prediction of a term insurance may be very small or very large contingent on specific variables e.g. level of education. Thus, a c-log-log model was created and has a wider range of fitted values compared to the fitted values by the logit model. Inspecting the ROC curve, the AUC value of c-log-log was 0.7466546, showcasing that the c-log-log model is beneficial when choosing different probability thresholds as opposed to in doing so with the logistic model. Similar to the probit model, the c-log-log model has a higher KS statistic value than logistic, being 43.1%. Again, the data was not developed with the intention of a c-log-log regression model.
+
+## Random Forest
+Although the central focus of this project was the prediction of life insurance purchasers using logistic regression, random forest modeling was used in addition for classification and variable selection. Random forest produced a valuable variable importance plot, which was used as a reference for variable selection in regression model building. Since random forest is a generally robust black-box machine learning method, it achieved its expected result of being the highest performer in class prediction, with only 9 observations mis-classified and an AUC of 0.9652803. 
+
+## Quantile Regression
+Quantile regression is a good addition to model building when data tends to be skewed in distributions as shown in the histograms (figures 9-21), and it will be better for a model to consider the change between FACE and predictors depending on the quantile. Visualizing the figures with the confidence bound included, one can observe that age and charity are the only continuous variables that would require quantile regression. This is concluded by the red bounds; if the model is within the model then linear regression is sufficient, but if the model exceeds the bounds, quantile regression would be necessary for those specific quantiles. Running quantile on age reveals that after the 0.65 quantile, the older the term purchaser is, the higher the FACE value will be. Quantile regression on charity reveals that after the 0.5 quantile, the higher the charitable contribution is, the higher the FACE value will be. Other variables included in the logistic regression model were revealed to have linear regression as a sufficient model to predict FACE value. 
+
+## Ridge Regression 
+While the main focus of this project was to predict life insurance purchasers, we also were interested in predicting the face value of insurance purchased from those who purchased insurance. Because we had collinear variables, and a relatively large number of variables compared to the number of observations given, we decided to create use ridge regression to predict the face value of term insurance purchased. From the data of term insurance purchasers, we fitted a ridge regression model using cross-validation to find the optimal lambda that had the lowest mean squared error. The optimal lambda is 0.08595841. The test MSE is 2.568472 and the average percent error of the predicted face values is 3.15%. Included is a figure with the predicted values on the y-axis, and true test values on the x-axis, and a y = x line drawn through. The predictions are distributed around the y = x line with a couple of outliers. Additionally, the ridge regression model was able to accurately predict some face-values (the points lying on the y = x) line.  
+
+## Lasso Regression 
+In addition to the ridge regression model, we also chose to perform a lasso regression model to see if a lasso regression model would perform better. Unlike ridge regression, lasso regression will shrink coefficients that are not associated with the dependent variable to zero, another form of variable selection. The variables that were not shrunken to zero were: GENDER1, MARSTAT1, EDUCATION, NUMHH2, NUMHH6, NUMHH9, TOTINCOME, CHARITY, FACECVLIFEPOLICIES, and CASHCVLIFEPOLICIES. The optimal lambda found through cross-validation was 0.08398222. The test MSE was 2.403266
+and the average percent error was 3.11%, slightly outperforming the ridge regression model. Similar to the ridge regression model, it was also able to accurate predict some values (the values lying on the y = x line).
+
+## Conclusion
+Out of the three logistic models, the logistic regression model that performed the best was the reduced model that included the log-transformed AGE variable (Model 3). This logistic regression model had the lowest AIC and highest classification accuracy.
+
+When comparing the best logistic regression model with C-Log-Log and Probit regression models, the logistic regression still performed best in regards to classification accuracy. While C-Log-Log and Probit regression had higher AUC values, logistic regression had the lowest number of misclassifications. It was chosen as the best model due to the reasons explained in the logistic regression section above. 
+
+Quantile regression was solely used to understand which predictors for FACE needed more robust modeling techniques. Inspecting individual predictors concluded that only AGE and CHARITY benefited from quantile regression. 
+
+When predicting the face value of insurance purchased, the ridge and lasso regression performance were similar, with lasso regression barely outperforming ridge regression because of its lower test MSE and average percent errors.
+
+
+
+# Shortcomings 
+
+Some remarks on what made this problem difficult and provided strong stopping points in the report: 
+
+- The way in which the data was reported, not all of the variables had definitions describing what were key differences i.e. totincome and income differences. 
+- There is a lot of multicollinearity among the variables, thus regression techniques will continue to produce errors along with NA outpouts until the predictors involved with the multicollinearity were dropped. 
+- A lot of the multicollinearity was present among the spouse variables. So the spouse variables needed to be dropped in order to produce a model with complete output. 
+- Spousal variables had to be dropped in order to perform ridge and lasso regression due to the large number of NA values. 
+- Fluency in R is necessary to attempt this problem.
+
+
+# Exploratory Analysis 
+
+```{r installing packages, include=FALSE}
+# Libraries
+library(e1071)
+library(broom)
+library(glmnet)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(randomForest)   # random forest analysis 
+library(car)            # vif - variance inflation factor 
+library(MASS)           # stepAIC
+library(ROCR)           # ROC Curves
+library(pROC)           # ROC, AUC
+library(caret)          # confusionMatrix
+library(mice)
+library(quantreg)       # quantile regression 
+```
+
+```{r reading in the data, echo = FALSE}
+# Read in data
+#setwd("~/Desktop/Classes/PSTAT 196")
+termlife <- read.csv("TermLife.csv")
+```
+
+
+```{r subsetting the data and creating agediff & edudiff, include = FALSE}
+# Subset Dataset, Delete Variables 
+
+# ethnicity factor-levels unclear -> toss this variable 
+# borrowcvlifepol factor-levels unclear -> toss this variable 
+# netvalue factor-levels unclear -> toss this variable 
+
+termlf <- subset(termlife, select = -c(ETHNICITY, NETVALUE, BORROWCVLIFEPOL))
+term <- termlf
+
+# Create agediff variable - only for those with spouse 
+termlf$AGEDIFF <- ifelse(termlf$MARSTAT==0, NA, termlf$AGE - termlf$SAGE)
+
+# Create edudiff variable - only for those with spouse 
+termlf$EDUDIFF <- ifelse(termlf$MARSTAT==0, NA, termlf$EDUCATION - termlf$SEDUCATION)
+
+# Set missing spouse ages to NA
+termlf$SAGE[termlf$SAGE == 0] <- NA
+
+# Set missing seducation values to NA
+termlf$SEDUCATION[termlf$MARSTAT==0] <- NA
+
+# based on education differences and age differences between interviewer and spouse, maybe possible to assume most responders were male
+
+str(termlf)
+attach(termlf)
+#continuous variables 
+termlife_cont <- data.frame(AGE, EDUCATION, SAGE, AGEDIFF, SEDUCATION, NUMHH, INCOME, TOTINCOME, CHARITY,FACE, FACECVLIFEPOLICIES, CASHCVLIFEPOLICIES)
+```
+
+## Summary Output 
+
+```{r summary output, message=FALSE, warning = FALSE, echo=FALSE}
+summary(termlife_cont)
+print("Variance of Variables")
+apply(termlife_cont, 2, var)
+```
+
+## Number of Unique Factor-Levels of Covariates 
+```{r checking unique factors, warning = FALSE, message = FALSE, echo=FALSE}
+catvar <- c("GENDER", "SGENDER", "MARSTAT", "SMARSTAT", "EDUCATION", "SEDUCATION", "EDUDIFF", "NUMHH", "Term_Flag") 
+termlife_cat <- termlf[catvar]
+termlife_cat <-termlife_cat %>% mutate_each_(funs(factor(.)), catvar) #change into categorical variables
+str(termlife_cat)
+```
+
+## Variable Correlation Assessments 
+
+### Pearson Correlation Statistics 
+
+```{r correlation statistics, warning=FALSE, message=FALSE, echo = FALSE}
+# Calculate variable correlation values with a few different approaches to measuring correlation
+termlf %>% select_at(vars(AGE,EDUCATION,FACE,INCOME,TOTINCOME,NUMHH,CHARITY,AGEDIFF,Term_Flag)) %>% 
+  cor(method = "pearson", use = "complete")
+```
+
+## Transformation + Pairs Graph Correlation Assessment 
+```{r scatterplot matrix, echo = FALSE}
+log_income <- log(INCOME)
+log_age <- log(AGE)
+log_education <- log(EDUCATION)
+log_face <- log(FACE)
+pairs(~AGE + FACE + EDUCATION + INCOME, data = termlf, main = "Scatterplot Matrix")
+```
+
+```{r log-transformed, echo = FALSE}
+pairs(~log_age + log_face + log_education + log_income, main = "Log-transformed Scatterplot Matrix")
+```
+
+```{r bar graphs with agediff and edudiff, echo = FALSE, warning = FALSE, message = FALSE}
+### Graphs of Variable Relationships (Figures 1-4)
+termlf %>% ggplot(aes(x = AGEDIFF, y = FACE)) + geom_bar(stat = "identity") + labs(title = "Figure 1")
+termlf %>% ggplot(aes(x = AGEDIFF, y = EDUCATION)) + geom_bar(stat = "identity") + labs(title = "Figure 2")
+termlf %>% ggplot(aes(x = AGEDIFF, y = INCOME)) + geom_bar(stat = "identity") + labs(title = "Figure 3")
+termlf %>% ggplot(aes(x = EDUCATION, y = FACE)) + geom_bar(stat = "identity") + labs(title = "Figure 4")
+```
+
+```{r box plots with term flag, warning = FALSE, echo = FALSE, message = FALSE}
+### Box Plots of Variables vs Term_Flag (Figure 5-8)
+termlf$Term_Flag <- factor(Term_Flag, levels = c(0, 1), labels = c("No", "Yes"))
+age <- ggplot(termlf, aes(x = Term_Flag, y = AGE, fill = Term_Flag)) + geom_boxplot() + labs(title = "Figure 5")
+age
+
+AGEDIFFs <- ggplot(termlf, aes(x = Term_Flag, y = AGEDIFF, fill = Term_Flag)) + geom_boxplot() + labs(title = "Figure 6")
+AGEDIFFs
+
+edu <- ggplot(termlf, aes(x = Term_Flag, y = EDUCATION, fill = Term_Flag)) + geom_boxplot() + labs(title = "Figure 7")
+edu
+
+numh <- ggplot(termlf, aes(x = Term_Flag, y = NUMHH, fill = Term_Flag)) + geom_boxplot() + labs(title = "Figure 8")
+numh
+```
+
+```{r First round of Histograms, warning = FALSE, echo = FALSE, message = FALSE}
+## Histograms (Figures 9-14)
+# AGE Density Histogram 
+ggplot(termlf) +
+  geom_histogram(mapping = aes(x = AGE,y = ..density..),binwidth = 2,na.rm = T) +
+  geom_density(mapping = aes(x = AGE, y = ..density..), col="red") +
+  labs(title = "Figure 9. Histogram of AGE")
+
+
+# SAGE Density Histogram 
+ggplot(termlf) +
+  geom_histogram(mapping = aes(x = SAGE,y = ..density..),binwidth = 3,na.rm = T) +
+  geom_density(mapping = aes(x = SAGE, y = ..density..), col="red") +
+  labs(title = "Figure 10. Histogram of SAGE")
+
+# EDUCATION Density Histogram 
+ggplot(termlf) +
+  geom_histogram(mapping = aes(x = EDUCATION,y = ..density..),binwidth = 2,na.rm = T) +
+  geom_density(mapping = aes(x = EDUCATION, y = ..density..), col="red") +
+  labs(title = "Figure 11. Histogram of EDUCATION")
+
+# SEDUCATION Density Histogram 
+ggplot(termlf) +
+  geom_histogram(mapping = aes(x = SEDUCATION,y = ..density..),binwidth = 2,na.rm = T) +
+  geom_density(mapping = aes(x = SEDUCATION, y = ..density..), col="red") +
+  labs(title = "Figure 12. Histogram of SEDUCATION")
+
+ggplot(termlf) +
+  geom_histogram(mapping = aes(x = AGEDIFF,y = ..density..),binwidth = 4,na.rm = T) +
+  geom_density(mapping = aes(x = AGEDIFF, y = ..density..), col="red") +
+  labs(title = "Figure 13. Histogram of AGEDIFF")
+
+ggplot(termlf) +
+  geom_histogram(mapping = aes(x = EDUDIFF,y = ..density..),binwidth = 1,na.rm = T) +
+  geom_density(mapping = aes(x = EDUDIFF, y = ..density..), col="red") +
+  labs(title = "Figure 14. Histogram of EDUDIFF")
+
+```
+
+```{r Second Round of Histograms, warning = FALSE, message = FALSE, echo = FALSE}
+### Zoomed into histograms (Figures 15-21)
+ggplot(termlf) + 
+  geom_histogram(mapping = aes(x = INCOME, y = ..density..)) +
+  geom_density(mapping = aes(x = INCOME, y = ..density..), col = "red") + 
+  xlim(0, 200000) + labs(title = "Figure 16. Histogram of INCOME")
+
+ggplot(termlf) + 
+  geom_histogram(mapping = aes(x = TOTINCOME, y = ..density..)) +
+  geom_density(mapping = aes(x = TOTINCOME, y = ..density..), col = "red") + 
+  xlim(0, 200000) + ylim(0, 1e-5) + labs(title = "Figure 17. Histogram of TOTINCOME")
+
+ggplot(termlf) + 
+  geom_histogram(mapping = aes(x = CHARITY, y = ..density..)) +
+  geom_density(mapping = aes(x = CHARITY, y = ..density..), col = "red") + 
+  xlim(0, 50000) + ylim(0, 3e-5) + labs(title = "Figure 18. Histogram of CHARITY")
+
+ggplot(termlf) + 
+  geom_histogram(mapping = aes(x = FACE, y = ..density..)) +
+  geom_density(mapping = aes(x = FACE, y = ..density..), col = "red") +
+  xlim(0, 50000) + labs(title = "Figure 19. Histogram of FACE")
+
+ggplot(termlf) + 
+  geom_histogram(mapping = aes(x = FACECVLIFEPOLICIES, y = ..density..)) +
+  geom_density(mapping = aes(x = FACECVLIFEPOLICIES, y = ..density..), col = "red") +
+  xlim(0, 100000) + ylim(0, 0.00005) + labs(title = "Figure 20. Histogram of FACECVLIFEPOLICIES")
+
+ggplot(termlf) + 
+  geom_histogram(mapping = aes(x = CASHCVLIFEPOLICIES, y = ..density..)) +
+  geom_density(mapping = aes(x = CASHCVLIFEPOLICIES, y = ..density..), col = "red") +
+  xlim(0, 6500) + labs(title = "Figure 21. Histogram of CASHCVLIFEPOLICIES")
+
+#***Note: Warning message "Removed n rows containing non-finite values..." just means that because we zoomed into the histogram, we cannot see the n number of observations because they are outside the bounds of the axes. 
+
+```
+
+```{r Bar graphs for categorical purchasers, warning = FALSE, message = FALSE, echo = FALSE}
+### Graphs Illustrating Relationships of Term_Flag (variable indicating purchase) and Other Variables 
+# Subset Dataset, Delete Variables 
+
+# ethnicity factor-levels unclear -> toss this variable 
+# borrowcvlifepol factor-levels unclear -> toss this variable 
+# netvalue factor-levels unclear -> toss this variable 
+
+termlf <- subset(termlife, select = -c(ETHNICITY, NETVALUE, BORROWCVLIFEPOL))
+
+# based on education differences and age differences between interviewer and spouse, maybe possible to assume most responders were male
+
+#continuous variables 
+termlife_cont <- data.frame(AGE, EDUCATION, SAGE, AGEDIFF, SEDUCATION, NUMHH, INCOME, TOTINCOME, CHARITY,FACE, FACECVLIFEPOLICIES, CASHCVLIFEPOLICIES)
+yes_cat <- termlife_cat[which(termlf$Term_Flag == 1),]
+EDU_yes <- data.frame(table(yes_cat$EDUCATION))
+colnames(EDU_yes) <- c("Education", "Freq")
+ggplot(EDU_yes, aes(x=Education, y=Freq, fill=Education)) + geom_bar(width = 1, stat = "identity") + labs(title = "Figure 22")
+
+marstat_yes <- data.frame(table(yes_cat$MARSTAT))
+colnames(marstat_yes) <- c("Marital_Status", "Freq")
+ggplot(marstat_yes, aes(x = Marital_Status, y = Freq, fill = Marital_Status)) + geom_bar(width = 1, stat = "identity") + labs(title = "Figure 23")
+
+gender_cat <- data.frame(table(yes_cat$GENDER))
+colnames(gender_cat) <- c("Gender", "Freq")
+ggplot(gender_cat, aes(x = Gender, y = Freq, fill = Gender)) + geom_bar(width = 1, stat = "identity") + labs(title = "Figure 24")
+
+numhh_yes <- data.frame(table(yes_cat$NUMHH))
+colnames(numhh_yes) <- c("Number_of_Household_Members", "Freq")
+ggplot(numhh_yes, aes(x =Number_of_Household_Members, y = Freq), fill = Number_of_Household_Members) + geom_bar(width = 1, stat = "identity") + labs(title = "Figure 25")
+```
+
+
+```{r Preparing the data for modeling, include=FALSE, warning = FALSE, message = FALSE, echo = FALSE}
+# Subset Dataset, Delete Variables 
+
+# ethnicity factor-levels unclear -> toss this variable 
+# borrowcvlifepol factor-levels unclear -> toss this variable 
+# netvalue factor-levels unclear -> toss this variable 
+
+termlf <- subset(termlife, select = -c(ETHNICITY, NETVALUE, BORROWCVLIFEPOL))
+catvar <- c("GENDER", "SGENDER", "MARSTAT", "SMARSTAT", "Term_Flag") 
+term <- term %>% mutate_each_(funs(factor(.)), catvar) #change into categorical variables
+
+# Create agediff variable - only for those with spouse 
+termlf$AGEDIFF <- ifelse(termlf$MARSTAT==0, NA, termlf$AGE - termlf$SAGE)
+
+# Create edudiff variable - only for those with spouse 
+termlf$EDUDIFF <- ifelse(termlf$MARSTAT==0, NA, termlf$EDUCATION - termlf$SEDUCATION)
+
+# Set missing spouse ages to NA
+termlf$SAGE[termlf$SAGE == 0] <- NA
+
+# Set missing seducation values to NA
+termlf$SEDUCATION[termlf$MARSTAT==0] <- NA
+
+# Data Frame Preview 
+str(termlf)
+
+#continuous variables 
+termlife_cont <- data.frame(AGE, EDUCATION, SAGE, AGEDIFF, SEDUCATION, NUMHH, INCOME, TOTINCOME, CHARITY,
+                            FACE, FACECVLIFEPOLICIES, CASHCVLIFEPOLICIES)
+```
+
+# Data Modeling 
+
+```{r,warning = FALSE, message = FALSE, echo = FALSE}
+term <- termlf
+
+term$SAGE[is.na(term$SAGE)] <- 0
+term$SEDUCATION[is.na(term$SEDUCATION)] <- 0
+term$AGEDIFF[is.na(term$AGEDIFF)] <- 0
+term$EDUDIFF[is.na(term$EDUDIFF)] <- 0
+
+catvar <- c("GENDER", "SGENDER", "MARSTAT", "SMARSTAT", "Term_Flag") 
+term <- term %>% mutate_each(funs(factor(.)), catvar) #change into categorical variables
+
+# Split - Purchase, non-Purchase
+term_p <- term[ which(term$Term_Flag == 1),]
+term_np <- term[ which(term$Term_Flag == 0),]
+
+### Split - Train/Test - purchasers
+set.seed(1)
+indLR_p <- sample(2, nrow(term_p), replace = T, prob = c(0.7, 0.3))  # split data into test set and training set (ratio: 70% training, 30% test)
+traindataLR_p <- term_p[indLR_p == 1,]
+testdataLR_p <- term_p[indLR_p == 2,]
+
+### Split - Train/Test - non-purchasers 
+set.seed(1)
+indLR_np <- sample(2, nrow(term_np), replace = T, prob = c(0.7, 0.3))  # split data into test set and training set (ratio: 70% training, 30% test)
+traindataLR_np <- term_np[indLR_np == 1,]
+testdataLR_np <- term_np[indLR_np == 2,]
+
+# Combine Train Sets - purchasers, non-purchasers
+train_full <- rbind(traindataLR_p, testdataLR_np)
+
+# Combine Test Sets - purchasers, non-purchasers 
+test_full <- rbind(testdataLR_p, testdataLR_np)
+```
+
+
+## Random Forest
+
+```{r random forest, echo=FALSE, warning = FALSE, message = FALSE}
+# Random Forest Model 
+
+# Tree functions
+varsTree <- Term_Flag ~ . -FACE
+
+# Applying the algorithm
+treeRF <- randomForest(varsTree, data = train_full, ntree=100, proximity = T) # importance = T ? 
+
+# Importance of each variable
+term.imp <- varImpPlot(treeRF, main = "Importance of each variable")
+# Variable Importance Measure: Mean Decrease in Gini Index 
+importance(treeRF)
+
+# Class Prediction Object / ROC Curve
+pred.rf = predict(treeRF, test_full, type="prob")
+pred.rf = prediction(pred.rf[,2], test_full$Term_Flag)
+perf.rf = performance(pred.rf, measure="tpr", x.measure="fpr")
+plot(perf.rf, col=2, lwd=3, main="Life Insurance Purchaser: ROC Curve for Random Forest")
+abline(0,1)
+
+# AUC
+auc.glmRF = performance(pred.rf, "auc")@y.values
+auc.glmRF
+
+# Confusion Matrix
+pred.rf = predict(treeRF, test_full, type="response")
+confusionMatrix(pred.rf, test_full$Term_Flag)
+```
+
+## Modeling via Regression  
+
+### Logistic Regression Model and Variable Selection 
+```{r Logistic Regression Model, warning = FALSE, echo = FALSE, message = FALSE}
+# Use Alias/VIF to eliminate multicollinearity in predictors 
+
+# start here // face correlated with response; agediff, edudiff correlated w/ indep vars
+term.lrm.r1 <-glm(Term_Flag ~ . -FACE-AGEDIFF-EDUDIFF, data=train_full, family=binomial(link = "logit")) 
+
+#vif(term.lrm.r1)    # fails with error - b/c of perfect correlation / alias 
+
+alias(term.lrm.r1)  # check problematic variables 
+
+# problematic variables removed 
+term.lrm.r2 <-glm(Term_Flag ~ . -FACE-AGEDIFF-EDUDIFF-SMARSTAT-SGENDER, data=train_full, family=binomial(link = "logit"))      
+
+vif(term.lrm.r2)    # shows us SAGE and SEDUCATION are also too highly correlated
+
+# MODEL 1: base model - removed all spouse vars b/c multicollinearity - FULL MODEL
+term.lrm.r3 <-glm(Term_Flag ~ . -FACE-AGEDIFF-EDUDIFF-SMARSTAT-SGENDER-SAGE-SEDUCATION, data=train_full, family=binomial(link = "logit")) 
+
+vif(term.lrm.r3) # in the clear, no further significant multicollinearity
+
+#summary(term.lrm.r3)
+
+# MODEL 2: reduced model
+term.lrm.r4 <-glm(Term_Flag ~ . -FACE-AGEDIFF-EDUDIFF-SMARSTAT-SGENDER-SAGE-SEDUCATION-FACECVLIFEPOLICIES-TOTINCOME-NUMHH, data=train_full, family=binomial(link = "logit")) 
+
+# MODEL 3: log AGE predictor model
+logistic_model <-glm(Term_Flag ~ . -FACE-AGEDIFF-EDUDIFF-SMARSTAT-SGENDER-SAGE-SEDUCATION-FACECVLIFEPOLICIES-TOTINCOME-NUMHH-AGE+log(AGE), data=train_full, family=binomial(link = "logit")) 
+```
+
+### ROC Curves for 3 Logistic Models
+
+```{r ROC Curve for logistic regression model, echo=FALSE}
+# Logistic ROC Curves
+pred.glm1 = predict(term.lrm.r3, test_full, type="response")
+predict.glm1 = prediction(pred.glm1, test_full$Term_Flag)
+perf.glm1 = performance(predict.glm1, measure="tpr", x.measure="fpr")
+
+pred.glm2 = predict(term.lrm.r4, test_full, type="response")
+predict.glm2 = prediction(pred.glm2, test_full$Term_Flag)
+perf.glm2 = performance(predict.glm2, measure="tpr", x.measure="fpr")
+
+pred.glm3 = predict(logistic_model, test_full, type="response")
+predict.glm3 = prediction(pred.glm3, test_full$Term_Flag)
+perf.glm3 = performance(predict.glm3, measure="tpr", x.measure="fpr")
+
+plot(perf.glm1, col="orange", lwd=2, main="ROC Curve Logistic Models")
+plot(perf.glm2, col="purple", lwd=2, main="ROC Curve Logistic Models", add="T")
+plot(perf.glm3, col = "green", lwd = 2, main = "ROC Curve Logistic Models", add = "T")
+legend("bottomright", inset = .05, legend=c("Model 1: Full Model", "Model 2: Reduced Model","Model 3: Reduced log(AGE) Model "), col=c("orange", "purple", "green"), lty=1, cex=0.75, xjust = 1)
+abline(0,1)
+```
+
+### Comparing Prediction Accuracy for Logistic Models: Confusion Matrix
+```{r,warning = FALSE, message = FALSE, echo = FALSE}
+test_full = test_full %>%
+mutate(Term_Flag=as.factor(ifelse(Term_Flag==0,"No", "Yes")))
+pred.logistic1_table <- ifelse(pred.glm1 > 0.5, "Yes", "No")
+table(pred=pred.logistic1_table, true=test_full$Term_Flag)
+pred.logistic2_table <- ifelse(pred.glm2>0.5, "Yes", "No")
+table(pred = pred.logistic2_table, true = test_full$Term_Flag)
+pred.logistic3_table <- ifelse(pred.glm3 > 0.5, "Yes", "No")
+table(pred = pred.logistic3_table, true = test_full$Term_Flag)
+```
+
+### AUC for Logistic Models
+```{r,warning = FALSE, message = FALSE,echo = FALSE}
+auc.logistic1 <- performance(predict.glm1,"auc")@y.values[[1]]
+auc.logistic2 <- performance(predict.glm2,"auc")@y.values[[1]]
+auc.logistic3 <- performance(predict.glm3,"auc")@y.values[[1]] 
+cat("AUC for logistic regression model 1:", auc.logistic1) 
+cat("AUC for logistic regression model 2:", auc.logistic2) 
+cat("AUC for logistic regression model 3:", auc.logistic3) 
+```
+
+
+## Logistic Regression
+```{r logistic regression summary,echo=FALSE,warning = FALSE, message = FALSE}
+summary(logistic_model)
+```
+## Probit Regression
+```{r Probit Regression, echo=FALSE,warning = FALSE, message = FALSE}
+probit_model <-glm(Term_Flag ~ . -FACE-SMARSTAT-SGENDER-SAGE-SEDUCATION-FACECVLIFEPOLICIES-TOTINCOME-NUMHH-AGE+log(AGE), data = train_full , family = binomial(link = "probit")) 
+summary(probit_model)
+```
+## Complementary Log Log Regression
+```{r cloglog model, echo= FALSE,warning = FALSE, message = FALSE}
+cloglog_model <-glm(Term_Flag ~ . -FACE-SMARSTAT-SGENDER-SAGE-SEDUCATION-FACECVLIFEPOLICIES-TOTINCOME-NUMHH-AGE+log(AGE), data = train_full , family = binomial(link = "cloglog")) 
+summary(cloglog_model)
+```
+
+
+
+```{r logistic plotted vs. probit, echo=FALSE, warning = FALSE, message = FALSE}
+plot(logistic_model$fitted.values, probit_model$fitted.values,
+xlab = "Logit Fitted Values", ylab = "Probit Fitted Values",
+main = "Logit vs. Probit Fitted Values", pch=19, cex=0.2)
+abline(a=0, b=1, col="red")
+```
+
+```{r logistic plotted vs. cloglog, echo=FALSE}
+plot(logistic_model$fitted.values, cloglog_model$fitted.values,
+xlab = "Logit Fitted Values", ylab = "C-Log-Log Fitted Values",
+main = "Logit vs. C-Log-Log Fitted Values", pch=19, cex=0.2)
+abline(a=0, b=1, col="red")
+```
+
+## ROC Curve 
+```{r ROC for all three above models, echo=FALSE, warning = FALSE, message = FALSE}
+prob.logistic <- predict(logistic_model, test_full, type = "response")
+prediction.logistic <- prediction(prob.logistic, test_full$Term_Flag)
+perf.logistic <- performance(prediction.logistic, measure = "tpr", x.measure = "fpr")
+prob.probit <- predict(probit_model, test_full, type="response")
+prediction.probit <- prediction(prob.probit, test_full$Term_Flag)
+perf.probit <- performance(prediction.probit, measure = "tpr", x.measure = "fpr")
+prob.cloglog <- predict(cloglog_model, test_full, type="response")
+prediction.cloglog <- prediction(prob.cloglog, test_full$Term_Flag)
+perf.cloglog <- performance(prediction.cloglog, measure = "tpr", x.measure = "fpr")
+plot(perf.logistic, col="blue", lwd=2, main="ROC Curve")
+plot(perf.probit, col="red", lwd=2, main="ROC Curve", add="T")
+plot(perf.cloglog, col = "green", lwd = 2, main = "ROC Curve", add = "T")
+legend("bottomright", inset = .05, legend=c("Logistic Regression", "Probit Regression","C-Log-Log Regression"),
+col=c("blue", "red", "green"), lty=1, cex=1)
+abline(0,1)
+```
+
+## Confusion Matrix 
+```{r test errors, warning = FALSE, message = FALSE, echo = FALSE}
+prediction.logistic_table <- ifelse(prob.logistic > 0.5, "Yes", "No")
+table(pred=prediction.logistic_table, true=test_full$Term_Flag)
+prediction.probit_table <- ifelse(prob.probit>0.5, "Yes", "No")
+table(pred = prediction.probit_table, true = test_full$Term_Flag)
+prediction.cloglog_table <- ifelse(prob.cloglog > 0.5, "Yes", "No")
+table(pred = prediction.cloglog_table, true = test_full$Term_Flag)
+```
+
+## AUC 
+```{r AUC for the above three models, warning = FALSE, message = FALSE, echo = FALSE}
+auc.logistic <- performance(prediction.logistic,"auc")@y.values[[1]]
+auc.probit <- performance(prediction.probit,"auc")@y.values[[1]]
+auc.cloglog <- performance(prediction.cloglog,"auc")@y.values[[1]] 
+cat("AUC for logistic regression:", auc.logistic) 
+cat("AUC for probit regression:", auc.probit) 
+cat("AUC for c-log-log regression:", auc.cloglog) 
+```
+
+## KS Statistics 
+```{r ks statistic, warning = FALSE, message = FALSE, echo=FALSE}
+ks_logistic=max(attr(perf.logistic,'y.values')[[1]]-attr(perf.logistic,'x.values')[[1]])
+plot(perf.logistic,main=paste0('Logistic KS=',round(ks_logistic*100,1),'%'))
+lines(x = c(0,1),y=c(0,1))
+
+
+ks_probit=max(attr(perf.probit,'y.values')[[1]]-attr(perf.probit,'x.values')[[1]])
+plot(perf.probit,main=paste0('Probit KS=',round(ks_probit*100,1),'%'))
+lines(x = c(0,1),y=c(0,1))
+
+
+ks_cloglog=max(attr(perf.cloglog,'y.values')[[1]]-attr(perf.cloglog,'x.values')[[1]])
+plot(perf.cloglog,main=paste0('C-Log-Log KS=',round(ks_cloglog*100,1),'%'))
+lines(x = c(0,1),y=c(0,1))
+```
+
+
+## Quantile Regression 
+```{r Quantile Regression, warning = FALSE, message = FALSE, echo=FALSE}
+termlf$FACE[termlf$FACE == 0] <- NA
+log_face <- log(termlf$FACE)
+taus <- c(0.2,0.4,0.5,0.8)
+qr_multiple <- rq(FACE~EDUCATION + AGE + INCOME + TOTINCOME + NUMHH, data = termlf, tau = taus)
+qr_multiple_log <- rq(log_face~EDUCATION + AGE + INCOME + TOTINCOME + NUMHH +
+                        MARSTAT + SMARSTAT + CHARITY +
+                        FACECVLIFEPOLICIES + CASHCVLIFEPOLICIES, data = termlf, tau = taus)
+summary(qr_multiple_log)
+coef(qr_multiple_log)
+```
+
+```{r quantile plot 1 , warning = FALSE, message = FALSE, echo=FALSE}
+QR_education <- rq(log_face~EDUCATION, data = termlf, tau = taus)
+QR_AGE <- rq(log_face~AGE, data = termlf, tau = taus)
+QR_INCOME <- rq(log_face~INCOME, data = termlf, tau = taus)
+```
+
+```{r quantile plot 2, warning = FALSE, message = FALSE, echo=FALSE}
+QR_TOTINCOME <- rq(log_face~TOTINCOME, data = termlf, tau = taus)
+QR_NUMHH <- rq(log_face~NUMHH, data = termlf, tau = taus)
+QR_marital_status <- rq(log_face~MARSTAT,data=termlf, tau = taus)
+QR_spouse_marital_status <- rq(log_face~SMARSTAT, data = termlf, tau = taus)
+QR_charity <- rq(log_face~CHARITY, data = termlf, tau = taus)
+
+```
+
+```{r quantile plot 3, warning = FALSE, message = FALSE, echo=FALSE}
+plot(summary(QR_education), parm = "EDUCATION")
+```
+
+```{r quantile plot 4, warning = FALSE, message = FALSE, echo=FALSE}
+plot(summary(QR_AGE), parm = "AGE")
+```
+
+```{r quantile plot 5, warning = FALSE, message = FALSE, echo=FALSE}
+plot(summary(QR_INCOME), parm = "INCOME")
+```
+
+```{r quantile plot 6, warning = FALSE, message = FALSE, echo=FALSE}
+plot(summary(QR_NUMHH), parm = "NUMHH")
+```
+
+```{r quantile plot 7, warning = FALSE, message = FALSE, echo=FALSE}
+plot(summary(QR_marital_status), parm = "MARSTAT")
+```
+
+```{r quantile plot 8, warning = FALSE, message = FALSE, echo=FALSE}
+plot(summary(QR_spouse_marital_status), parm = "SMARSTAT")
+```
+
+```{r quantile plot 9, warning = FALSE, message = FALSE, echo=FALSE}
+plot(summary(QR_charity), parm = "CHARITY")
+```
+
+## Ridge Regression
+```{r Ridge Regression, warning = FALSE, echo=FALSE, message = FALSE}
+purchased <- which(termlf$Term_Flag == 1) #subset out rows that purchased insurance
+termlf.p <- termlf[purchased,]
+termlf.p <- termlf.p %>% mutate_each_(funs(factor(.)), c("GENDER", "MARSTAT", "NUMHH"))
+remove <- c(5:8, 16:18)
+termlf.p <- termlf.p[-remove]
+colnames(termlf.p)
+termlf.p$FACE <- log(termlf.p$FACE)
+ggplot(termlf.p) + 
+  geom_histogram(mapping = aes(x = FACE, y = ..density..)) +
+  geom_density(mapping = aes(x = FACE, y = ..density..), col = "red") + labs(title = "Figure 19. Histogram of FACE")
+x <- model.matrix(termlf.p$FACE ~., data = termlf.p)[,-9]
+y <- termlf.p$FACE
+set.seed(45)
+train_index <- sample(1:nrow(x), nrow(x) * 0.7) 
+test_index <- (-train_index)
+x_train <- x[train_index,]
+y_train <- y[train_index]
+y_test <- y[test_index]
+x_test <- x[test_index,]
+cv_ridge <- cv.glmnet(x_train, y_train, alpha = 0) #perform cross-validation
+ridge_opt_lambda <- cv_ridge$lambda.min
+plot(cv_ridge)
+abline(v = log(cv_ridge$lambda.min), col="red", lwd=3, lty=2)
+ridge_fit <- glmnet(x_train, y_train, alpha = 0, lambda = ridge_opt_lambda)
+ridge_pred <- predict(ridge_fit, s = ridge_opt_lambda, newx = x_test)
+predict(ridge_fit, type = "coefficients",s = ridge_opt_lambda)[1:19,]
+print("Ridge Regression Test MSE")
+mean((ridge_pred - y_test)^2) #MSE
+print("Ridge Regression Predictions Average Percent Error")
+mean((ridge_pred - y_test)/y_test) #average percent error
+test_labels <- as.data.frame(y_test) 
+ridge_pred <- as.data.frame(unlist(ridge_pred))
+predtrue <- data.frame(test_labels, ridge_pred)
+str(predtrue)
+(ggplot(data = predtrue, aes(x = test_labels, y = ridge_pred)) + geom_point() + geom_abline(slope = 1, color = "red") + labs(title = "Ridge Regression Prediction Performance") + xlab("True Values") + ylab("Ridge Predicted Values"))
+```
+
+## Lasso Regression
+```{r Lasso Regression, warning = FALSE, echo = FALSE, message = FALSE}
+cv_lasso <- cv.glmnet(x_train, y_train, alpha = 1)
+plot(cv_lasso)
+abline(v = log(cv_lasso$lambda.min), col="red", lwd=3, lty=2)
+lasso_opt_lambda <- cv_lasso$lambda.min
+lasso_fit <- glmnet(x_train, y_train, alpha = 1, lambda = lasso_opt_lambda)
+lasso_pred <- predict(lasso_fit, s = lasso_opt_lambda, newx = x_test)
+predict(lasso_fit, type = "coefficients", s = lasso_opt_lambda)
+print("Lasso Regression Test MSE")
+mean((lasso_pred - y_test)^2) #MSE
+print("Lasso Regression Predictions Average Percent Error")
+mean((lasso_pred - y_test)/y_test) #average percent error
+test_labels <- as.data.frame(y_test) 
+predtrue <- data.frame(test_labels, lasso_pred)
+(ggplot(data = predtrue, aes(x = test_labels, y = lasso_pred)) + geom_point() + geom_abline(slope = 1, color = "red") + labs(title = "Lasso Regression Prediction Performance") + xlab("True Values") + ylab("Lasso Predicted Values"))
+```
+
+# References
+1. https://stats.stackexchange.com/questions/90659/why-is-auc-higher-for-a-classifier-that-is-less-accurate-than-for-one-that-is-mo
+2. https://www.methodsconsultants.com/tutorial/what-is-the-difference-between-logit-and-probit-models/
+3. http://www.physics.csbsju.edu/stats/KS-test.html
+4. http://www.stat.ualberta.ca/~kcarrier/STAT562/comp_log_log
+
+\newpage
+# Acknowledgements 
+We would like to thank Ian Duncan for continuous support and guidance. We would also like to thank Nhan Huynh for giving us her time, attention and advice in the process. 
+\newpage 
+
+# Appendix 
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```
+
+
+
